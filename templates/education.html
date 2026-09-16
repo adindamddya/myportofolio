@@ -1,57 +1,41 @@
-{% load static %}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Education - {{ name }}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-</head>
+{% block meta %}
+<title>Education - {{ name }}</title>
+{% endblock meta %}
 
-<body>
-    <header>
-        <a href="{% url 'main:show_main' %}" class="brand">{{ name }}</a>
+{% block content %}
 
-        <nav>
-            <a href="{% url 'main:show_main' %}">Profile</a>
-            <a href="{% url 'main:show_experience' %}">Experience</a>
-            <a href="{% url 'main:show_education' %}">Education</a>
-        </nav>
-    </header>
+<main class="container">
+    <section class="experience-section">
+        <span class="section-kicker">Education</span>
+        <h1>My Education</h1>
 
-    <main class="container">
-        <section class="experience-section">
-            <span class="section-kicker">Education</span>
-            <h1>My Education</h1>
+        <div class="experience-grid">
+            {% for education in education_list %}
+                <article class="experience-card">
+                    <h2>{{ education.school }}</h2>
 
-            <div class="experience-grid">
-                {% for education in education_list %}
-                    <article class="experience-card">
-                        <h2>{{ education.school }}</h2>
-                        <p class="experience-description">
-                            {{ education.degree }} in {{ education.field_of_study }}
-                        </p>
-                        <p class="experience-status">
-                            {{ education.start_year }} -
-                            {% if education.end_year %}
-                                {{ education.end_year }}
-                            {% else %}
-                                Present
-                            {% endif %}
-                        </p>
-                    </article>
-                {% empty %}
-                    <p class="empty-state">
-                        No education information has been added yet.
+                    <p class="experience-description">
+                        {{ education.degree }} in {{ education.field_of_study }}
                     </p>
-                {% endfor %}
-            </div>
-        </section>
-    </main>
 
-    <footer>
-        <p>© 2026 {{ name }}. All rights reserved.</p>
-    </footer>
-</body>
-</html>
+                    <p class="experience-status">
+                        {{ education.start_year }} -
+                        {% if education.end_year %}
+                            {{ education.end_year }}
+                        {% else %}
+                            Present
+                        {% endif %}
+                    </p>
+                </article>
+            {% empty %}
+                <p class="empty-state">
+                    No education information has been added yet.
+                </p>
+            {% endfor %}
+        </div>
+    </section>
+</main>
+
+{% endblock content %}
