@@ -38,6 +38,7 @@ def show_education(request):
     context = {
         "name": "Adinda Madya Aliyah",
         "education_list": education_list,
+        "school_query": request.GET.get("school", "").strip(),
     }
     return render(request, "education.html", context)
 
@@ -86,8 +87,15 @@ def delete_education(request, education_id):
 
 
 def get_education_json(request):
+    school_query = request.GET.get("school", "").strip()
+
     education = Education.objects.all()
+
+    if school_query:
+        education = education.filter(school__icontains=school_query)
+
     education_json = serializers.serialize("json", education)
+
     return HttpResponse(
         education_json,
         content_type="application/json",

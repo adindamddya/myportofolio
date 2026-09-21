@@ -1,6 +1,5 @@
-from django.test import TestCase
+import json
 
-# Create your tests here.
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -91,4 +90,113 @@ class EducationTest(TestCase):
         self.assertContains(
             response,
             "No education information has been added yet."
+        )
+
+    def test_create_education(self):
+        response = self.client.post(
+            reverse("main:create_education"),
+            {
+                "school": "HIT",
+                "degree": "Bachelor's Degree",
+                "field_of_study": "Artificial Intelligence",
+                "start_year": 2025,
+                "end_year": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            Education.objects.filter(
+                school="HIT",
+                field_of_study="Artificial Intelligence",
+            ).exists()
+        )
+
+    def test_update_education(self):
+        response = self.client.post(
+            reverse(
+                "main:edit_education",
+                args=[self.education.id],
+            ),
+            {
+                "school": "Harbin Institute of Technology",
+                "degree": "Bachelor's Degree",
+                "field_of_study": "Artificial Intelligence",
+                "start_year": 2025,
+                "end_year": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+        self.education.refresh_from_db()
+
+        self.assertEqual(
+            self.education.school,
+            "Harbin Institute of Technology",
+        )
+        self.assertEqual(
+            self.education.field_of_study,
+            "Artificial Intelligence",
+        )
+
+    def test_delete_education(self):
+        education_id = self.education.id
+
+        response = self.client.post(
+            reverse(
+                "main:delete_education",
+                args=[education_id],
+            )
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            Education.objects.filter(id=education_id).exists()
+        )
+
+    def test_education_json(self):
+        response = self.client.get(
+            reverse("main:get_education_json")
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/json",
+        )
+
+        data = json.loads(response.content)
+
+        self.assertEqual(len(data), 1)
+        self.assertEqual(
+            data[0]["model"],
+            "main.education",
+        )
+        self.assertEqual(
+            data[0]["fields"]["school"],
+            self.education.school,
+        )
+
+    def test_education_search(self):
+        Education.objects.create(
+            school="Harbin Institute of Technology",
+            degree="Bachelor's Degree",
+            field_of_study="Artificial Intelligence",
+            start_year=2025,
+        )
+
+        response = self.client.get(
+            reverse("main:show_education"),
+            {"school": "Harbin"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "Harbin Institute of Technology",
+        )
+        self.assertNotContains(
+            response,
+            "Universitas Indonesia",
         )
