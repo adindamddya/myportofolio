@@ -1,15 +1,11 @@
-
-from django.shortcuts import render
-
-# Create your views here.
-
 from django.contrib import messages
 from django.core import serializers
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from main.forms import EducationForm
-from main.models import Experience, Education
+from main.models import Education, Experience
+
 
 def show_main(request):
     context = {
@@ -31,12 +27,20 @@ def show_experience(request):
     }
     return render(request, "experience.html", context)
 
+
 def show_education(request):
+    response = get_education_json(request)
+    education_data = list(
+        serializers.deserialize("json", response.content)
+    )
+    education_list = [item.object for item in education_data]
+
     context = {
         "name": "Adinda Madya Aliyah",
-        "education_list": Education.objects.all(),
+        "education_list": education_list,
     }
     return render(request, "education.html", context)
+
 
 def create_education(request):
     form = EducationForm(request.POST or None)
@@ -50,10 +54,41 @@ def create_education(request):
         "name": "Adinda Madya Aliyah",
         "form": form,
     }
-
     return render(request, "education_form.html", context)
+
+
+def edit_education(request, education_id):
+    education = get_object_or_404(Education, pk=education_id)
+    form = EducationForm(request.POST or None, instance=education)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Education berhasil diperbarui!")
+        return redirect("main:show_education")
+
+    context = {
+        "name": "Adinda Madya Aliyah",
+        "form": form,
+        "education": education,
+        "is_edit": True,
+    }
+    return render(request, "education_form.html", context)
+
+
+def delete_education(request, education_id):
+    education = get_object_or_404(Education, pk=education_id)
+
+    if request.method == "POST":
+        education.delete()
+        messages.success(request, "Education berhasil dihapus!")
+
+    return redirect("main:show_education")
+
 
 def get_education_json(request):
     education = Education.objects.all()
     education_json = serializers.serialize("json", education)
-    return HttpResponse(education_json, content_type="application/json")
+    return HttpResponse(
+        education_json,
+        content_type="application/json",
+    )
