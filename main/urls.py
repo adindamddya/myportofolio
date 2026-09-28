@@ -8,6 +8,9 @@ from main.views import (
     edit_education,
     delete_education,
     get_education_json,
+    register_user,
+    login_user,
+    logout_user,
 )
 
 app_name = "main"
@@ -20,4 +23,8 @@ urlpatterns = [
     path("education/<int:education_id>/edit/", edit_education, name="edit_education"),
     path("education/<int:education_id>/delete/", delete_education, name="delete_education"),
     path("api/education/", get_education_json, name="get_education_json"),
+    path("login/", login_user, name="login"),
+    path("register/", register_user, name="register"),
+    path("login/", login_user, name="login"),
+    path("logout/", logout_user, name="logout"),
 ]
