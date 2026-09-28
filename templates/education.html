@@ -27,6 +27,7 @@
                 value="{{ school_query }}"
                 placeholder="Search by school name..."
             >
+
             <button type="submit" class="button-link">
                 Search
             </button>
@@ -39,7 +40,9 @@
         </form>
 
         <div class="experience-grid">
+
             {% for education in education_list %}
+
                 <article class="experience-card">
 
                     <h2>{{ education.school }}</h2>
@@ -50,6 +53,7 @@
 
                     <p class="experience-status">
                         {{ education.start_year }} -
+
                         {% if education.end_year %}
                             {{ education.end_year }}
                         {% else %}
@@ -57,7 +61,27 @@
                         {% endif %}
                     </p>
 
+                    <p>⭐ {{ education.starred_by.count }}</p>
+
+                    {% if user.is_authenticated %}
+                        <form
+                            method="POST"
+                            action="{% url 'main:toggle_star' education.id %}"
+                        >
+                            {% csrf_token %}
+
+                            <button type="submit">
+                                {% if user in education.starred_by.all %}
+                                    Unstar
+                                {% else %}
+                                    Star
+                                {% endif %}
+                            </button>
+                        </form>
+                    {% endif %}
+
                     <div class="education-actions">
+
                         <a
                             href="{% url 'main:edit_education' education.id %}"
                             class="button-link"
@@ -71,15 +95,21 @@
                             onsubmit="return confirm('Are you sure you want to delete this education?');"
                         >
                             {% csrf_token %}
-                            <button type="submit" class="button-danger">
+
+                            <button
+                                type="submit"
+                                class="button-danger"
+                            >
                                 Delete
                             </button>
                         </form>
+
                     </div>
 
                 </article>
 
             {% empty %}
+
                 <p class="empty-state">
                     {% if school_query %}
                         No education found for "{{ school_query }}".
@@ -87,7 +117,9 @@
                         No education information has been added yet.
                     {% endif %}
                 </p>
+
             {% endfor %}
+
         </div>
 
     </section>

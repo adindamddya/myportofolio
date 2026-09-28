@@ -6,6 +6,11 @@ from django.core import serializers
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+
+from django.contrib.auth.models import User
+
 from main.forms import EducationForm
 from main.models import Education, Experience
 import datetime
@@ -156,3 +161,17 @@ def logout_user(request):
     response.delete_cookie("last_login")
 
     return response
+
+@login_required(login_url="/login/")
+def toggle_star(request, education_id):
+    if request.method != "POST":
+        raise PermissionDenied
+
+    education = get_object_or_404(Education, pk=education_id)
+
+    if education.starred_by.filter(pk=request.user.pk).exists():
+        education.starred_by.remove(request.user)
+    else:
+        education.starred_by.add(request.user)
+
+    return redirect("main:show_education")
