@@ -3,7 +3,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 
 from django.core import serializers
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from django.contrib.auth.decorators import login_required
@@ -44,17 +44,13 @@ def show_experience(request):
 
 
 def show_education(request):
-    response = get_education_json(request)
-    education_data = list(
-        serializers.deserialize("json", response.content)
-    )
-    education_list = [item.object for item in education_data]
+    school_query = request.GET.get("school", "").strip()
 
     context = {
         "name": "Adinda Madya Aliyah",
-        "education_list": education_list,
-        "school_query": request.GET.get("school", "").strip(),
+        "school_query": school_query,
     }
+
     return render(request, "education.html", context)
 
 
@@ -104,17 +100,41 @@ def delete_education(request, education_id):
 def get_education_json(request):
     school_query = request.GET.get("school", "").strip()
 
-    education = Education.objects.all()
+    education = Education.objects.prefetch_related("starred_by").all()
 
     if school_query:
         education = education.filter(school__icontains=school_query)
 
-    education_json = serializers.serialize("json", education)
+    data = []
 
-    return HttpResponse(
-        education_json,
-        content_type="application/json",
-    )
+    for item in education:
+        starred_users = item.starred_by.all()
+
+        is_starred = (
+            request.user in starred_users
+            if request.user.is_authenticated
+            else False
+        )
+
+        starred_by_names = ", ".join(
+            [user.username for user in starred_users]
+        )
+
+        data.append({
+            "pk": str(item.id),
+            "fields": {
+                "school": item.school,
+                "degree": item.degree,
+                "field_of_study": item.field_of_study,
+                "start_year": item.start_year,
+                "end_year": item.end_year,
+                "star_count": starred_users.count(),
+                "is_starred": is_starred,
+                "starred_by_names": starred_by_names,
+            },
+        })
+
+    return JsonResponse(data, safe=False)
 
 def register_user(request):
     form = UserCreationForm()
