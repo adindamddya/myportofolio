@@ -7,6 +7,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST # <--- INI YANG BARU DITAMBAHKAN
 from django.core.exceptions import PermissionDenied
 
 from django.contrib.auth.models import User
@@ -44,14 +45,55 @@ def show_experience(request):
 
 
 def show_education(request):
-    school_query = request.GET.get("school", "").strip()
+    # Halaman ini sekarang hanya merender kerangka HTML kosong (skeleton)
+    return render(request, 'education.html')
 
-    context = {
-        "name": "Adinda Madya Aliyah",
-        "school_query": school_query,
-    }
+def get_education_json(request):
+    query = request.GET.get('search', '')
+    
+    if query:
+        educations = Education.objects.filter(school__icontains=query) 
+    else:
+        educations = Education.objects.all()
 
-    return render(request, "education.html", context)
+    data = []
+    for edu in educations:
+        is_starred = request.user in edu.starred_by.all() if request.user.is_authenticated else False
+        
+        data.append({
+            'id': edu.id,
+            'school': edu.school, 
+            'degree': edu.degree,
+            'stars_count': edu.starred_by.count(),
+            'is_starred': is_starred,
+        })
+    return JsonResponse(data, safe=False)
+
+def add_education_ajax(request):
+    if request.method == 'POST':
+        if not request.user.is_superuser: 
+            return JsonResponse({'status': 'error', 'message': 'Kamu tidak memiliki izin untuk menambah data.'}, status=403)
+
+        form = EducationForm(request.POST)
+        if form.is_valid():
+            edu = form.save()
+            return JsonResponse({'status': 'success', 'message': 'Data pendidikan berhasil ditambahkan!'}, status=201)
+        else:
+            return JsonResponse({'status': 'error', 'message': form.errors}, status=400)
+            
+    return JsonResponse({'status': 'error', 'message': 'Metode HTTP tidak diizinkan.'}, status=400)
+
+@require_POST
+def delete_education_ajax(request, id):
+    if not request.user.is_superuser:
+        return JsonResponse({'status': 'error', 'message': 'Akses ditolak.'}, status=403)
+        
+    try:
+        edu = get_object_or_404(Education, pk=id)
+        edu.delete()
+        return JsonResponse({'status': 'success', 'message': 'Data berhasil dihapus.'}, status=200)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 
 def create_education(request):

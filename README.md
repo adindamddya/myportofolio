@@ -57,3 +57,18 @@ Pada Tugas 3, saya melakukan refactoring template HTML dengan menggunakan `base.
 #### AI Disclosure
 
 Dalam pengerjaan Tugas 3, saya menggunakan AI untuk membantu memahami beberapa konsep Django dan ketika mengalami error saat mengerjakan project. AI membantu saya dalam memahami penggunaan ModelForm, template inheritance, serialization dan deserialization JSON, serta implementasi fitur Create, Update, Delete, dan JSON Data Delivery. Setelah itu, saya tetap mencoba menjalankan dan menguji kode sendiri, mengecek hasilnya di browser, dan memperbaiki bagian yang masih error.
+
+
+### Tugas 5
+
+1. Jelaskan apa itu debouncing dan mengapa teknik ini penting diterapkan pada fitur pencarian yang menggunakan AJAX!
+
+   Debouncing adalah teknik untuk menunda eksekusi suatu fungsi sampai pengguna berhenti melakukan aktivitas selama waktu tertentu. Pada fitur pencarian dengan AJAX, debouncing penting agar request ke server tidak dikirim setiap kali pengguna mengetik satu karakter. Dengan begitu, jumlah request dapat dikurangi sehingga penggunaan server menjadi lebih efisien dan pencarian tetap responsif.
+
+2. Jelaskan fungsi dari penggunaan `await` ketika kita menggunakan `fetch()`! Apa yang akan terjadi jika kita tidak menggunakan `await`?
+
+   `await` digunakan untuk menunggu hasil dari operasi asynchronous seperti `fetch()` sebelum kode berikutnya dijalankan. Dengan menggunakan `await`, program dapat menunggu sampai response dari server diterima sehingga data dapat diproses dengan benar. Jika tidak menggunakan `await`, `fetch()` akan mengembalikan sebuah Promise dan kode berikutnya dapat berjalan sebelum data selesai diterima. Hal ini dapat menyebabkan data belum tersedia ketika ingin digunakan.
+
+3. Jelaskan apa itu serangan XSS (Cross-Site Scripting) dan mengapa data yang ditampilkan melalui AJAX/JavaScript lebih rentan terhadap serangan ini daripada data yang ditampilkan langsung melalui template Django!
+
+   XSS (Cross-Site Scripting) adalah serangan yang terjadi ketika kode berbahaya, seperti JavaScript, dimasukkan ke dalam halaman web dan kemudian dijalankan oleh browser pengguna. Data yang ditampilkan melalui AJAX/JavaScript perlu lebih diperhatikan karena data tersebut biasanya dimasukkan secara dinamis ke dalam HTML. Jika data tidak di-escape, input seperti tag HTML atau JavaScript dapat dianggap sebagai kode oleh browser. Oleh karena itu, data teks harus di-escape sebelum dimasukkan ke HTML dan input juga perlu dibersihkan di sisi server.
