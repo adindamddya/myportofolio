@@ -5,6 +5,7 @@ from main.views import (
     show_main,
     show_experience,
     show_education,
+    show_projects,
     create_education,
     edit_education,
     delete_education,
@@ -25,6 +26,9 @@ urlpatterns = [
 
     # Experience
     path("experience/", show_experience, name="show_experience"),
+
+    # Projects
+    path("projects/", show_projects, name="show_projects"),
 
     # Education
     path("education/", show_education, name="show_education"),

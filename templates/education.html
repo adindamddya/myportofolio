@@ -21,7 +21,6 @@
         </div>
 
         <form id="education-search-form" class="education-search">
-
             <input
                 type="search"
                 id="search-input"
@@ -29,20 +28,9 @@
                 value="{{ school_query }}"
                 placeholder="Search by school name..."
             >
-
             <button type="submit" class="button-link">
                 Search
             </button>
-
-            {% if school_query %}
-                <a
-                    href="{% url 'main:show_education' %}"
-                    class="button-link"
-                >
-                    Clear
-                </a>
-            {% endif %}
-
         </form>
 
         <div id="loading" class="empty-state hide">
@@ -62,176 +50,145 @@
     </section>
 </main>
 
+{% csrf_token %}
 <script>
+const BASE_PROJECTS_ENDPOINT = "{% url 'api:education-list' %}";
+const DETAIL_PROJECT_ENDPOINT = "{% url 'api:education-detail' '00000000-0000-0000-0000-000000000000' %}";
+const STAR_PROJECT_ENDPOINT = "{% url 'api:education-star' '00000000-0000-0000-0000-000000000000' %}";
+const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
+const IS_AUTHENTICATED = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
 
-    const BASE_EDUCATION_ENDPOINT =
-        "{% url 'main:get_education_json' %}";
+const loadingState = document.getElementById('loading');
+const errorState = document.getElementById('error');
+const emptyState = document.getElementById('empty');
+const gridContainer = document.getElementById('grid');
+const searchForm = document.getElementById('education-search-form') || document.getElementById('project-search-form');
+const searchInput = document.getElementById('search-input');
+const projectForm = document.getElementById('project-form');
+let projectsAbortController;
+let searchDebounceTimer;
 
-    const loading = document.getElementById("loading");
-    const error = document.getElementById("error");
-    const empty = document.getElementById("empty");
-    const grid = document.getElementById("grid");
-    
-    const SEARCH_DEBOUNCE_DELAY = 300;
-    let searchDebounceTimer;
+function getCookie(name) {
+    const prefix = `${name}=`;
+    const cookie = document.cookie.split(';').map(value => value.trim())
+        .find(value => value.startsWith(prefix));
+    return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
+}
 
-    function escapeHtml(str) {
-        if (str === null || str === undefined) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+function escapeHtml(value) {
+    return String(value ?? '').replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+}
+
+function projectEndpoint(pattern, id) {
+    return pattern.replace('00000000-0000-0000-0000-000000000000', id);
+}
+
+function displayPageSection({ showLoading = false, showError = false,
+    showEmpty = false, showGrid = false }) {
+    loadingState.classList.toggle('hide', !showLoading);
+    errorState.classList.toggle('hide', !showError);
+    emptyState.classList.toggle('hide', !showEmpty);
+    gridContainer.classList.toggle('hide', !showGrid);
+}
+
+function buildProjectCardElement(project) {
+    const article = document.createElement('article');
+    article.className = 'experience-card';
+    const school = project.school || project.title;
+    const degree = project.degree || project.description;
+    const field = project.field_of_study || project.tech_stack;
+    const star = IS_AUTHENTICATED
+        ? `<button type="button" class="button button-star${project.is_starred ? ' is-starred' : ''}"
+            data-action="star" data-id="${escapeHtml(project.id)}"
+            title="${escapeHtml(project.starred_by_names)}">
+            ${project.is_starred ? 'Unstar' : 'Star'} (${project.star_count})</button>`
+        : `<a href="{% url 'main:login' %}" class="button">Login to star (${project.star_count})</a>`;
+    const remove = IS_SUPERUSER
+        ? `<button type="button" class="button button-danger" data-action="delete"
+            data-id="${escapeHtml(project.id)}">Delete</button>` : '';
+    const edit = IS_SUPERUSER
+        ? `<a href="/education/${escapeHtml(project.id)}/edit/" class="button-link">Edit</a>` : '';
+    article.innerHTML = `<h2>${escapeHtml(school)}</h2>
+        <p class="experience-description">${escapeHtml(degree)} in ${escapeHtml(field)}</p>
+        ${project.start_year ? `<p class="experience-status">${escapeHtml(project.start_year)} - ${escapeHtml(project.end_year || 'Present')}</p>` : ''}
+        <div class="education-actions">${edit}${star}${remove}</div>`;
+    return article;
+}
+
+async function fetchProjects(searchQuery = '') {
+    if (projectsAbortController) projectsAbortController.abort();
+    projectsAbortController = new AbortController();
+    try {
+        displayPageSection({ showLoading: true });
+        const url = new URL(BASE_PROJECTS_ENDPOINT, window.location.origin);
+        if (searchQuery) url.searchParams.set('title', searchQuery);
+        const response = await fetch(url, {
+            headers: { Accept: 'application/json' },
+            signal: projectsAbortController.signal,
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const projects = await response.json();
+        gridContainer.replaceChildren(...projects.map(buildProjectCardElement));
+        displayPageSection({ showGrid: projects.length > 0, showEmpty: projects.length === 0 });
+    } catch (error) {
+        if (error.name === 'AbortError') return;
+        console.error(error);
+        displayPageSection({ showError: true });
     }
+}
 
-    function displayPageSection(section) {
-        loading.classList.add("hide");
-        error.classList.add("hide");
-        empty.classList.add("hide");
-        grid.classList.add("hide");
+function apiErrorMessage(data, status) {
+    const messages = Object.values(data).flat().filter(value => typeof value === 'string');
+    return messages.join(' ') || `Request failed (HTTP ${status}).`;
+}
 
-        section.classList.remove("hide");
-    }
-
-    function buildEducationCardElement(item) {
-        const education = item.fields;
-        const educationId = item.pk;
-
-        const school = escapeHtml(education.school);
-        const degree = escapeHtml(education.degree);
-        const fieldOfStudy = escapeHtml(education.field_of_study);
-        const startYear = escapeHtml(education.start_year);
-        const endYear = education.end_year ? escapeHtml(education.end_year) : "Present";
-        const starCount = escapeHtml(education.star_count);
-
-        const card = document.createElement("article");
-        card.className = "experience-card";
-
-        card.innerHTML = `
-            <h2>${school}</h2>
-
-            <p class="experience-description">
-                ${degree} in ${fieldOfStudy}
-            </p>
-
-            <p class="experience-status">
-                ${startYear} - ${endYear}
-            </p>
-
-            <p>⭐ ${starCount}</p>
-
-            {% if user.is_authenticated %}
-                <form
-                    method="POST"
-                    action="{% url 'main:toggle_star' 0 %}"
-                    class="star-form"
-                >
-                    {% csrf_token %}
-                    <button type="submit">
-                        ${education.is_starred ? "Unstar" : "Star"}
-                    </button>
-                </form>
-            {% endif %}
-
-            <div class="education-actions">
-                <a
-                    href="{% url 'main:edit_education' 0 %}"
-                    class="button-link"
-                >
-                    Edit
-                </a>
-
-                <form
-                    method="POST"
-                    action="{% url 'main:delete_education' 0 %}"
-                >
-                    {% csrf_token %}
-                    <button
-                        type="submit"
-                        class="button-danger"
-                        onclick="return confirm('Are you sure you want to delete this education?');"
-                    >
-                        Delete
-                    </button>
-                </form>
-            </div>
-        `;
-
-        const starForm = card.querySelector(".star-form");
-        if (starForm) {
-            starForm.action = starForm.action.replace("/0/", `/${educationId}/`);
-        }
-
-        const editLink = card.querySelector(".education-actions a");
-        if (editLink) {
-            editLink.href = editLink.href.replace("/0/", `/${educationId}/`);
-        }
-
-        const deleteForm = card.querySelector(".education-actions form");
-        if (deleteForm) {
-            deleteForm.action = deleteForm.action.replace("/0/", `/${educationId}/`);
-        }
-
-        return card;
-    }
-
-    async function fetchEducation(query = "") {
-        displayPageSection(loading);
-
-        try {
-            const url = query
-                ? `${BASE_EDUCATION_ENDPOINT}?school=${encodeURIComponent(query)}`
-                : BASE_EDUCATION_ENDPOINT;
-
-            const response = await fetch(url);
-
-            if (!response.ok) {
-                throw new Error("Failed to fetch education data");
-            }
-
-            const data = await response.json();
-            grid.innerHTML = "";
-
-            if (data.length === 0) {
-                displayPageSection(empty);
-                return;
-            }
-
-            data.forEach(item => {
-                grid.appendChild(buildEducationCardElement(item));
-            });
-
-            displayPageSection(grid);
-
-        } catch (err) {
-            console.error(err);
-            displayPageSection(error);
-        }
-    }
-
-    const searchInput = document.getElementById("search-input");
-    const searchForm = document.getElementById("education-search-form");
-
-    function searchEducation() {
-        fetchEducation(searchInput.value.trim());
-    }
-
-    searchInput.addEventListener("input", function () {
-        clearTimeout(searchDebounceTimer);
-        searchDebounceTimer = setTimeout(function () {
-            searchEducation();
-        }, SEARCH_DEBOUNCE_DELAY);
+async function writeProject(url, method, payload) {
+    const response = await fetch(url, {
+        method,
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: payload === undefined ? undefined : JSON.stringify(payload),
     });
+    if (response.status === 204) return null;
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(apiErrorMessage(data, response.status));
+    return data;
+}
 
-    searchForm.addEventListener("submit", function (event) {
-        event.preventDefault();
-        clearTimeout(searchDebounceTimer);
-        searchEducation();
-    });
+gridContainer.addEventListener('click', async function(event) {
+    const button = event.target.closest('button[data-action]');
+    if (!button || button.disabled) return;
+    const action = button.dataset.action;
+    if (action === 'delete' && !window.confirm('Delete this education entry?')) return;
+    button.disabled = true;
+    try {
+        const pattern = action === 'star' ? STAR_PROJECT_ENDPOINT : DETAIL_PROJECT_ENDPOINT;
+        await writeProject(projectEndpoint(pattern, button.dataset.id),
+            action === 'star' ? 'POST' : 'DELETE');
+        showToast('Success', action === 'star' ? 'Star updated.' : 'Education deleted.', 'success');
+        await fetchProjects(searchInput.value.trim());
+    } catch (error) {
+        showToast('Request failed', error.message, 'error');
+    } finally {
+        button.disabled = false;
+    }
+});
 
-    fetchEducation(searchInput.value.trim());
-
+searchInput.addEventListener('input', function() {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => fetchProjects(searchInput.value.trim()), 300);
+});
+searchForm.addEventListener('submit', function(event) {
+    event.preventDefault();
+    clearTimeout(searchDebounceTimer);
+    fetchProjects(searchInput.value.trim());
+});
+fetchProjects(searchInput.value.trim());
 </script>
 
 {% endblock content %}

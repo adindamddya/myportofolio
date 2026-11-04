@@ -1,7 +1,4 @@
 from django.contrib.auth.models import User
-
-# Create your models here.
-
 import uuid
 from django.db import models
 
@@ -35,6 +32,7 @@ class Experience(models.Model):
     def is_ongoing(self):
         return self.ended_at is None
 
+
 class Education(models.Model):
     school = models.CharField(max_length=255)
     degree = models.CharField(max_length=255)
@@ -50,3 +48,20 @@ class Education(models.Model):
 
     def __str__(self):
         return self.school
+
+
+class Project(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    tech_stack = models.CharField(max_length=255)
+    project_url = models.URLField(blank=True, default="")
+    project_image_url = models.URLField(blank=True, default="")
+    starred_by = models.ManyToManyField(
+        User,
+        related_name="starred_projects",
+        blank=True
+    )
+
+    def __str__(self):
+        return self.title

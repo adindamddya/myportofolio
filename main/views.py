@@ -49,6 +49,11 @@ def show_education(request):
     return render(request, "education.html", context)
 
 
+def show_projects(request):
+    return render(request, "project.html", {"name": "Adinda Madya Aliyah"})
+
+
+
 def get_education_json(request):
     school_query = request.GET.get("school", "") or request.GET.get("search", "")
     school_query = school_query.strip()

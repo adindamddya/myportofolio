@@ -76,21 +76,20 @@ class EducationTest(TestCase):
         self.assertTemplateUsed(response, "education.html")
 
     def test_education_data_is_displayed(self):
-        response = self.client.get(reverse("main:show_education"))
+        response = self.client.get(reverse("main:get_education_json"))
 
+        self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.education.school)
-        self.assertContains(response, "Bachelor&#x27;s Degree")
+        self.assertContains(response, self.education.degree)
         self.assertContains(response, self.education.field_of_study)
         self.assertContains(response, str(self.education.start_year))
 
     def test_empty_education_page(self):
         Education.objects.all().delete()
-        response = self.client.get(reverse("main:show_education"))
+        response = self.client.get(reverse("main:get_education_json"))
 
-        self.assertContains(
-            response,
-            "No education information has been added yet."
-        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
 
     def test_create_education(self):
         response = self.client.post(
@@ -187,7 +186,7 @@ class EducationTest(TestCase):
         )
 
         response = self.client.get(
-            reverse("main:show_education"),
+            reverse("main:get_education_json"),
             {"school": "Harbin"},
         )
 

@@ -31,7 +31,7 @@ SECRET_KEY = os.getenv(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = not PRODUCTION if 'DEBUG' not in os.environ else os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "adinda-madya-myportofolio.pws.cs.ui.ac.id"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver", "adinda-madya-myportofolio.pws.cs.ui.ac.id"]
 
 
 # Application definition
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'main',
 ]
 
