@@ -75,9 +75,17 @@
     const SEARCH_DEBOUNCE_DELAY = 300;
     let searchDebounceTimer;
 
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
 
     function displayPageSection(section) {
-
         loading.classList.add("hide");
         error.classList.add("hide");
         empty.classList.add("hide");
@@ -86,52 +94,47 @@
         section.classList.remove("hide");
     }
 
-
     function buildEducationCardElement(item) {
-
         const education = item.fields;
         const educationId = item.pk;
 
-        const card = document.createElement("article");
+        const school = escapeHtml(education.school);
+        const degree = escapeHtml(education.degree);
+        const fieldOfStudy = escapeHtml(education.field_of_study);
+        const startYear = escapeHtml(education.start_year);
+        const endYear = education.end_year ? escapeHtml(education.end_year) : "Present";
+        const starCount = escapeHtml(education.star_count);
 
+        const card = document.createElement("article");
         card.className = "experience-card";
 
         card.innerHTML = `
-            <h2>${education.school}</h2>
+            <h2>${school}</h2>
 
             <p class="experience-description">
-                ${education.degree} in ${education.field_of_study}
+                ${degree} in ${fieldOfStudy}
             </p>
 
             <p class="experience-status">
-                ${education.start_year} -
-                ${education.end_year
-                    ? education.end_year
-                    : "Present"}
+                ${startYear} - ${endYear}
             </p>
 
-            <p>⭐ ${education.star_count}</p>
+            <p>⭐ ${starCount}</p>
 
             {% if user.is_authenticated %}
-
                 <form
                     method="POST"
                     action="{% url 'main:toggle_star' 0 %}"
                     class="star-form"
                 >
-
                     {% csrf_token %}
-
                     <button type="submit">
                         ${education.is_starred ? "Unstar" : "Star"}
                     </button>
-
                 </form>
-
             {% endif %}
 
             <div class="education-actions">
-
                 <a
                     href="{% url 'main:edit_education' 0 %}"
                     class="button-link"
@@ -143,175 +146,91 @@
                     method="POST"
                     action="{% url 'main:delete_education' 0 %}"
                 >
-
                     {% csrf_token %}
-
                     <button
                         type="submit"
                         class="button-danger"
-                        onclick="return confirm(
-                            'Are you sure you want to delete this education?'
-                        );"
+                        onclick="return confirm('Are you sure you want to delete this education?');"
                     >
                         Delete
                     </button>
-
                 </form>
-
             </div>
         `;
 
-
-        const starForm =
-            card.querySelector(".star-form");
-
+        const starForm = card.querySelector(".star-form");
         if (starForm) {
-
-            starForm.action =
-                starForm.action.replace(
-                    "/0/",
-                    `/${educationId}/`
-                );
+            starForm.action = starForm.action.replace("/0/", `/${educationId}/`);
         }
 
-
-        const editLink =
-            card.querySelector(".education-actions a");
-
+        const editLink = card.querySelector(".education-actions a");
         if (editLink) {
-
-            editLink.href =
-                editLink.href.replace(
-                    "/0/",
-                    `/${educationId}/`
-                );
+            editLink.href = editLink.href.replace("/0/", `/${educationId}/`);
         }
 
-
-        const deleteForm =
-            card.querySelector(
-                ".education-actions form"
-            );
-
+        const deleteForm = card.querySelector(".education-actions form");
         if (deleteForm) {
-
-            deleteForm.action =
-                deleteForm.action.replace(
-                    "/0/",
-                    `/${educationId}/`
-                );
+            deleteForm.action = deleteForm.action.replace("/0/", `/${educationId}/`);
         }
-
 
         return card;
     }
 
-
     async function fetchEducation(query = "") {
-
         displayPageSection(loading);
 
         try {
-
             const url = query
                 ? `${BASE_EDUCATION_ENDPOINT}?school=${encodeURIComponent(query)}`
                 : BASE_EDUCATION_ENDPOINT;
 
-
             const response = await fetch(url);
 
-
             if (!response.ok) {
-
-                throw new Error(
-                    "Failed to fetch education data"
-                );
+                throw new Error("Failed to fetch education data");
             }
 
-
             const data = await response.json();
-
-
             grid.innerHTML = "";
 
-
             if (data.length === 0) {
-
                 displayPageSection(empty);
-
                 return;
             }
 
-
             data.forEach(item => {
-
-                grid.appendChild(
-                    buildEducationCardElement(item)
-                );
-
+                grid.appendChild(buildEducationCardElement(item));
             });
-
 
             displayPageSection(grid);
 
         } catch (err) {
-
             console.error(err);
-
             displayPageSection(error);
         }
     }
 
-
-   const searchInput =
-        document.getElementById("search-input");
-
-    const searchForm =
-        document.getElementById("education-search-form");
-
+    const searchInput = document.getElementById("search-input");
+    const searchForm = document.getElementById("education-search-form");
 
     function searchEducation() {
-
-        fetchEducation(
-            searchInput.value.trim()
-        );
+        fetchEducation(searchInput.value.trim());
     }
 
-
-    searchInput.addEventListener(
-        "input",
-        function () {
-
-            clearTimeout(searchDebounceTimer);
-
-            searchDebounceTimer = setTimeout(
-                function () {
-                    searchEducation();
-                },
-                SEARCH_DEBOUNCE_DELAY
-            );
-
-        }
-    );
-
-
-    searchForm.addEventListener(
-        "submit",
-        function (event) {
-
-            event.preventDefault();
-
-            clearTimeout(searchDebounceTimer);
-
+    searchInput.addEventListener("input", function () {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(function () {
             searchEducation();
+        }, SEARCH_DEBOUNCE_DELAY);
+    });
 
-        }
-    );
+    searchForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        clearTimeout(searchDebounceTimer);
+        searchEducation();
+    });
 
-
-    fetchEducation(
-        searchInput.value.trim()
-    );
+    fetchEducation(searchInput.value.trim());
 
 </script>
 

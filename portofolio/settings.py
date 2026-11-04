@@ -20,19 +20,18 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#fwpzb7lk3)u=^k-@18mwj6p*nck29qv$0jyedow4cx3_8qj*y'
+SECRET_KEY = os.getenv(
+    'SECRET_KEY',
+    'django-insecure-#fwpzb7lk3)u=^k-@18mwj6p*nck29qv$0jyedow4cx3_8qj*y'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = not PRODUCTION if 'DEBUG' not in os.environ else os.getenv('DEBUG', 'True').lower() == 'true'
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "adinda-madya-myportofolio.pws.cs.ui.ac.id"]
-
-PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
 
 
 # Application definition

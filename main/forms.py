@@ -1,51 +1,20 @@
-from django.forms import ModelForm, TextInput, NumberInput
+from django import forms
+from django.utils.html import strip_tags
+from .models import Education
 
-from main.models import Education
-
-
-class EducationForm(ModelForm):
+class EducationForm(forms.ModelForm):
     class Meta:
         model = Education
-        fields = [
-            "school",
-            "degree",
-            "field_of_study",
-            "start_year",
-            "end_year",
-        ]
+        fields = ['school', 'degree', 'field_of_study', 'start_year', 'end_year']
 
-        labels = {
-            "school": "School",
-            "degree": "Degree",
-            "field_of_study": "Field of Study",
-            "start_year": "Start Year",
-            "end_year": "End Year",
-        }
+    def clean_school(self):
+        school = self.cleaned_data['school']
+        return strip_tags(school)
+        
+    def clean_degree(self):
+        degree = self.cleaned_data['degree']
+        return strip_tags(degree)
 
-        widgets = {
-            "school": TextInput(
-                attrs={
-                    "placeholder": "Universitas Indonesia",
-                }
-            ),
-            "degree": TextInput(
-                attrs={
-                    "placeholder": "Bachelor's Degree",
-                }
-            ),
-            "field_of_study": TextInput(
-                attrs={
-                    "placeholder": "Information System",
-                }
-            ),
-            "start_year": NumberInput(
-                attrs={
-                    "placeholder": "2025",
-                }
-            ),
-            "end_year": NumberInput(
-                attrs={
-                    "placeholder": "2029",
-                }
-            ),
-        }
+    def clean_field_of_study(self):
+        field_of_study = self.cleaned_data.get('field_of_study', '')
+        return strip_tags(field_of_study)
