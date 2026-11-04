@@ -33,6 +33,11 @@ DEBUG = not PRODUCTION if 'DEBUG' not in os.environ else os.getenv('DEBUG', 'Tru
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver", "adinda-madya-myportofolio.pws.cs.ui.ac.id"]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://adinda-madya-myportofolio.pws.cs.ui.ac.id",
+    "http://adinda-madya-myportofolio.pws.cs.ui.ac.id",
+]
+
 
 # Application definition
 
