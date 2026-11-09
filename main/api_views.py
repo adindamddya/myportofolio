@@ -84,7 +84,8 @@ def project_star(request, project_id):
 def education_list(request):
     if request.method in ("GET", "HEAD"):
         educations = Education.objects.prefetch_related("starred_by").order_by("school", "id")
-        school = request.query_params.get("school", "").strip()
+        school = request.query_params.get("school", "") or request.query_params.get("title", "")
+        school = school.strip()
         if school:
             educations = educations.filter(school__icontains=school)
         serializer = EducationSerializer(

@@ -15,9 +15,11 @@
                 <h1>My Education</h1>
             </div>
 
-            <a href="{% url 'main:create_education' %}" class="button-link">
-                + Add Education
-            </a>
+            {% if user.is_superuser %}
+                <button type="button" popovertarget="add-education-modal" class="button-link">
+                    + Add Education
+                </button>
+            {% endif %}
         </div>
 
         <form id="education-search-form" class="education-search">
@@ -47,6 +49,75 @@
 
         <div id="grid" class="experience-grid hide"></div>
 
+        {% if user.is_superuser %}
+        <div id="add-education-modal" popover class="modal-popover">
+            <div class="modal-card">
+                <h2>Add Education</h2>
+                <form id="add-education-form">
+                    <p>
+                        <label for="add_school">School:</label>
+                        <input type="text" name="school" id="add_school" required placeholder="School / University">
+                    </p>
+                    <p>
+                        <label for="add_degree">Degree:</label>
+                        <input type="text" name="degree" id="add_degree" required placeholder="Bachelor's Degree">
+                    </p>
+                    <p>
+                        <label for="add_field_of_study">Field of Study:</label>
+                        <input type="text" name="field_of_study" id="add_field_of_study" required placeholder="Information System">
+                    </p>
+                    <p>
+                        <label for="add_start_year">Start Year:</label>
+                        <input type="number" name="start_year" id="add_start_year" placeholder="2022">
+                    </p>
+                    <p>
+                        <label for="add_end_year">End Year:</label>
+                        <input type="number" name="end_year" id="add_end_year" placeholder="2026 (leave empty if ongoing)">
+                    </p>
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+                        <button type="button" class="button" onclick="document.getElementById('add-education-modal').hidePopover()">Cancel</button>
+                        <button type="submit" class="button button-link">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if user.is_superuser or is_editor %}
+        <div id="edit-education-modal" popover class="modal-popover">
+            <div class="modal-card">
+                <h2>Edit Education</h2>
+                <form id="edit-education-form">
+                    <input type="hidden" name="id" id="edit_id">
+                    <p>
+                        <label for="edit_school">School:</label>
+                        <input type="text" name="school" id="edit_school" required placeholder="School / University">
+                    </p>
+                    <p>
+                        <label for="edit_degree">Degree:</label>
+                        <input type="text" name="degree" id="edit_degree" required placeholder="Bachelor's Degree">
+                    </p>
+                    <p>
+                        <label for="edit_field_of_study">Field of Study:</label>
+                        <input type="text" name="field_of_study" id="edit_field_of_study" required placeholder="Information System">
+                    </p>
+                    <p>
+                        <label for="edit_start_year">Start Year:</label>
+                        <input type="number" name="start_year" id="edit_start_year" placeholder="2022">
+                    </p>
+                    <p>
+                        <label for="edit_end_year">End Year:</label>
+                        <input type="number" name="end_year" id="edit_end_year" placeholder="2026 (leave empty if ongoing)">
+                    </p>
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+                        <button type="button" class="button" onclick="document.getElementById('edit-education-modal').hidePopover()">Cancel</button>
+                        <button type="submit" class="button button-link">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
     </section>
 </main>
 
@@ -56,6 +127,7 @@ const BASE_PROJECTS_ENDPOINT = "{% url 'api:education-list' %}";
 const DETAIL_PROJECT_ENDPOINT = "{% url 'api:education-detail' '00000000-0000-0000-0000-000000000000' %}";
 const STAR_PROJECT_ENDPOINT = "{% url 'api:education-star' '00000000-0000-0000-0000-000000000000' %}";
 const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
+const IS_EDITOR = "{{ is_editor|yesno:'true,false' }}" === "true";
 const IS_AUTHENTICATED = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
 
 const loadingState = document.getElementById('loading');
@@ -64,7 +136,8 @@ const emptyState = document.getElementById('empty');
 const gridContainer = document.getElementById('grid');
 const searchForm = document.getElementById('education-search-form') || document.getElementById('project-search-form');
 const searchInput = document.getElementById('search-input');
-const projectForm = document.getElementById('project-form');
+const addEducationForm = document.getElementById('add-education-form');
+const editEducationForm = document.getElementById('edit-education-form');
 let projectsAbortController;
 let searchDebounceTimer;
 
@@ -108,12 +181,19 @@ function buildProjectCardElement(project) {
     const remove = IS_SUPERUSER
         ? `<button type="button" class="button button-danger" data-action="delete"
             data-id="${escapeHtml(project.id)}">Delete</button>` : '';
-    const edit = IS_SUPERUSER
-        ? `<a href="/education/${escapeHtml(project.id)}/edit/" class="button-link">Edit</a>` : '';
+    const canEdit = IS_SUPERUSER || IS_EDITOR;
+    const edit = canEdit
+        ? `<button type="button" class="button" data-action="edit"
+            data-id="${escapeHtml(project.id)}"
+            data-school="${escapeHtml(project.school || '')}"
+            data-degree="${escapeHtml(project.degree || '')}"
+            data-field="${escapeHtml(project.field_of_study || '')}"
+            data-start="${escapeHtml(project.start_year || '')}"
+            data-end="${escapeHtml(project.end_year || '')}">Edit</button>` : '';
     article.innerHTML = `<h2>${escapeHtml(school)}</h2>
         <p class="experience-description">${escapeHtml(degree)} in ${escapeHtml(field)}</p>
         ${project.start_year ? `<p class="experience-status">${escapeHtml(project.start_year)} - ${escapeHtml(project.end_year || 'Present')}</p>` : ''}
-        <div class="education-actions">${edit}${star}${remove}</div>`;
+        <div class="education-actions" style="display: flex; gap: 0.5rem; align-items: center; margin-top: 1rem;">${edit}${star}${remove}</div>`;
     return article;
 }
 
@@ -123,7 +203,10 @@ async function fetchProjects(searchQuery = '') {
     try {
         displayPageSection({ showLoading: true });
         const url = new URL(BASE_PROJECTS_ENDPOINT, window.location.origin);
-        if (searchQuery) url.searchParams.set('title', searchQuery);
+        if (searchQuery) {
+            url.searchParams.set('school', searchQuery);
+            url.searchParams.set('title', searchQuery);
+        }
         const response = await fetch(url, {
             headers: { Accept: 'application/json' },
             signal: projectsAbortController.signal,
@@ -140,6 +223,7 @@ async function fetchProjects(searchQuery = '') {
 }
 
 function apiErrorMessage(data, status) {
+    if (typeof data === 'string') return data;
     const messages = Object.values(data).flat().filter(value => typeof value === 'string');
     return messages.join(' ') || `Request failed (HTTP ${status}).`;
 }
@@ -160,10 +244,81 @@ async function writeProject(url, method, payload) {
     return data;
 }
 
+if (addEducationForm) {
+    addEducationForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const button = addEducationForm.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const formData = new FormData(addEducationForm);
+            const payload = {
+                school: formData.get('school'),
+                degree: formData.get('degree'),
+                field_of_study: formData.get('field_of_study'),
+                start_year: formData.get('start_year') || null,
+                end_year: formData.get('end_year') || null,
+            };
+            await writeProject(BASE_PROJECTS_ENDPOINT, 'POST', payload);
+            addEducationForm.reset();
+            const modal = document.getElementById('add-education-modal');
+            if (modal && modal.hidePopover) modal.hidePopover();
+            showToast('Success', 'Education added.', 'success');
+            await fetchProjects(searchInput.value.trim());
+        } catch (error) {
+            showToast('Could not add education', error.message, 'error');
+        } finally {
+            button.disabled = false;
+        }
+    });
+}
+
+if (editEducationForm) {
+    editEducationForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const button = editEducationForm.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const formData = new FormData(editEducationForm);
+            const id = formData.get('id');
+            const payload = {
+                school: formData.get('school'),
+                degree: formData.get('degree'),
+                field_of_study: formData.get('field_of_study'),
+                start_year: formData.get('start_year') || null,
+                end_year: formData.get('end_year') || null,
+            };
+            await writeProject(projectEndpoint(DETAIL_PROJECT_ENDPOINT, id), 'PATCH', payload);
+            editEducationForm.reset();
+            const modal = document.getElementById('edit-education-modal');
+            if (modal && modal.hidePopover) modal.hidePopover();
+            showToast('Success', 'Education updated.', 'success');
+            await fetchProjects(searchInput.value.trim());
+        } catch (error) {
+            showToast('Could not update education', error.message, 'error');
+        } finally {
+            button.disabled = false;
+        }
+    });
+}
+
 gridContainer.addEventListener('click', async function(event) {
     const button = event.target.closest('button[data-action]');
     if (!button || button.disabled) return;
     const action = button.dataset.action;
+
+    if (action === 'edit') {
+        const modal = document.getElementById('edit-education-modal');
+        if (!modal) return;
+        document.getElementById('edit_id').value = button.dataset.id;
+        document.getElementById('edit_school').value = button.dataset.school;
+        document.getElementById('edit_degree').value = button.dataset.degree;
+        document.getElementById('edit_field_of_study').value = button.dataset.field;
+        document.getElementById('edit_start_year').value = button.dataset.start;
+        document.getElementById('edit_end_year').value = button.dataset.end;
+        if (modal.showPopover) modal.showPopover();
+        return;
+    }
+
     if (action === 'delete' && !window.confirm('Delete this education entry?')) return;
     button.disabled = true;
     try {

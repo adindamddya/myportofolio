@@ -234,3 +234,64 @@ class EducationAPITest(APITestCase):
         # Owner can delete
         del_res = self.client.delete(reverse("api:education-detail", args=[new_id]))
         self.assertEqual(del_res.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_search_and_empty_results(self):
+        response = self.client.get(self.list_url, {"school": "Indonesia"})
+        self.assertEqual(len(response.data), 1)
+        response = self.client.get(self.list_url, {"school": "not-found"})
+        self.assertEqual(response.data, [])
+
+    def test_missing_education(self):
+        url = reverse("api:education-detail", args=[999999])
+        self.assertEqual(self.client.get(url).status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_validation(self):
+        self.client.force_authenticate(user=self.owner)
+        for bad_school in [" ", "   ", '<img src="x" onerror="alert(1)">']:
+            response = self.client.post(self.list_url, {**self.payload, "school": bad_school}, format="json")
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn("school", response.data)
+            self.assertEqual(Education.objects.count(), 1)
+
+    def test_star_requires_login_and_toggles(self):
+        self.assertEqual(self.client.post(self.star_url).status_code, status.HTTP_403_FORBIDDEN)
+        self.client.force_authenticate(user=self.visitor)
+        response = self.client.post(self.star_url)
+        self.assertTrue(response.data["is_starred"])
+        self.assertEqual(response.data["star_count"], 1)
+        response = self.client.post(self.star_url)
+        self.assertFalse(response.data["is_starred"])
+        self.assertEqual(response.data["star_count"], 0)
+
+    def test_computed_fields_are_read_only(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post(self.list_url, {
+            **self.payload,
+            "star_count": 99,
+            "is_starred": True,
+            "starred_by_names": "forged",
+        }, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["star_count"], 0)
+        self.assertFalse(response.data["is_starred"])
+
+    def test_session_write_without_csrf_is_rejected(self):
+        client = APIClient(enforce_csrf_checks=True)
+        self.assertTrue(client.login(username="edu_owner", password="test-password"))
+        response = client.post(self.list_url, self.payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Education.objects.count(), 1)
+
+    def test_session_write_with_csrf_succeeds(self):
+        client = APIClient(enforce_csrf_checks=True)
+        client.login(username="edu_owner", password="test-password")
+        page = client.get(self.list_url, HTTP_ACCEPT="text/html")
+        self.assertEqual(page.status_code, status.HTTP_200_OK)
+        token = client.cookies["csrftoken"].value
+        response = client.post(
+            self.list_url,
+            self.payload,
+            format="json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)

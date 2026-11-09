@@ -42,9 +42,13 @@ def show_experience(request):
 
 def show_education(request):
     school_query = request.GET.get("school", "").strip()
+    is_editor = False
+    if request.user.is_authenticated:
+        is_editor = request.user.groups.filter(name="Editor").exists()
     context = {
         "name": "Adinda Madya Aliyah",
         "school_query": school_query,
+        "is_editor": is_editor,
     }
     return render(request, "education.html", context)
 
